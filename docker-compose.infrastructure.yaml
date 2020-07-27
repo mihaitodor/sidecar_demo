@@ -5,7 +5,7 @@ services:
     container_name: sidecar
     # Use a custom release of Sidecar, because gonitro/sidecar doesn't have a
     # release for https://github.com/Nitro/sidecar/pull/52 yet
-    image: mihaitodor/sidecar:8485b1b
+    image: mihaitodor/sidecar:92cd80fe
     cap_add:
       - NET_ADMIN
     network_mode: host
@@ -39,8 +39,8 @@ services:
   envoy:
     container_name: envoy
     # This was the version I used when I tested https://github.com/Nitro/sidecar/pull/52
-    image: envoyproxy/envoy:v1.12.2
-    command: --service-cluster dev --service-node ${HOSTNAME:?HOSTNAME not set} --config-path /etc/envoy/${ENVOY_CONFIG:?ENVOY_CONFIG not set}
+    image: envoyproxy/envoy:v1.8.0
+    command: /usr/local/bin/envoy --service-cluster dev --service-node ${HOSTNAME:?HOSTNAME not set} --config-path /etc/envoy/${ENVOY_CONFIG:?ENVOY_CONFIG not set}
     network_mode: host
     ports: # For documentation purposes
       - 9901 # Admin UI
