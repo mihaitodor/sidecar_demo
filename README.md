@@ -1,5 +1,7 @@
 # Sidecar cluster demo
 
+Demo for the Go Remote Meetup talk from May 28 2020. Details and slides [here](https://github.com/mihaitodor/Presentations/tree/master/go_remote_meetup/2020-05-28).
+
 Disclaimer: This was only tested on OSX with Docker for Mac. It should work on
 Linux as well but I haven't checked.
 
