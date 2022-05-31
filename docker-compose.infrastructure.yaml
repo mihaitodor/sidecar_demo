@@ -3,13 +3,12 @@ version: "3.4"
 services:
   sidecar:
     container_name: sidecar
-    # Use a custom release of Sidecar, because gonitro/sidecar doesn't have a
-    # release for https://github.com/Nitro/sidecar/pull/52 yet
-    image: mihaitodor/sidecar:8485b1b
+    # image: gonitro/sidecar:b418716 # v2.1.5 - Works with Envoy v1.15.5
+    image: mihaitodor/sidecar:latest # Contains https://github.com/NinesStack/sidecar/pull/66
     cap_add:
       - NET_ADMIN
     network_mode: host
-    ports: # For documentation purposes
+    ports:
       - 7777 # Admin UI
       - 7946 # Memberlist port
     volumes:
@@ -35,27 +34,33 @@ services:
       HAPROXY_BIND_IP: "192.168.168.168"
       ENVOY_GRPC_PORT: 7776
       ENVOY_BIND_IP: "192.168.168.168"
+      ENVOY_LOGGING_LEVEL: debug
 
   envoy:
     container_name: envoy
-    # This was the version I used when I tested https://github.com/Nitro/sidecar/pull/52
-    image: envoyproxy/envoy:v1.12.2
+    # image: envoyproxy/envoy:v1.15.5
+    image: envoyproxy/envoy:v1.21.1
+    # entrypoint: /usr/local/bin/envoy
     command: --service-cluster dev --service-node ${HOSTNAME:?HOSTNAME not set} --config-path /etc/envoy/${ENVOY_CONFIG:?ENVOY_CONFIG not set}
     network_mode: host
-    ports: # For documentation purposes
+    ports:
       - 9901 # Admin UI
     volumes:
       - /etc/envoy:/etc/envoy
+      - /etc/envoy/ssl:/etc/envoy/ssl
     labels:
       SidecarDiscover: "false"
-
+    environment:
+      MESOS_HOSTNAME: ${HOSTNAME:?HOSTNAME not set}
+      CLUSTER_NAME: dev
+      BIND_IP: "192.168.168.168"
   envoy-ui:
     container_name: envoy-ui
     image: gonitro/envoy-ui:42bae1c
     # Hack: Run this in host networking mode to avoid injecting the parent
     # container IP via some env var
     network_mode: host
-    ports: # For documentation purposes
+    ports:
       - 7778 # UI
     labels:
       SidecarDiscover: "false"

@@ -1,20 +1,24 @@
 version: "3.4"
 
 # Generic DinD container parameters
-x-dind-container: &dind-container
-  image: "docker:19.03.8-dind"
+x-dind-container:
+  &dind-container
+  image: "docker:20.10.14-dind"
   privileged: true
   volumes:
     - ./envoy:/etc/envoy
+    - ./ssl:/etc/envoy/ssl
   extra_hosts:
     dev.local: "192.168.168.168"
   environment:
     DOCKER_TLS_CERTDIR: ""
 
 # Extra DinD container parameters for backends
-x-dind-container-backend: &dind-container-backend
+x-dind-container-backend:
+  &dind-container-backend
   ports:
     - 2375 # Docker API
+    - 7776 # Sidecar gRPC
     - 7777 # Sidecar UI
     - 7778 # Envoy UI
     - 9901 # Envoy Admin UI
@@ -26,6 +30,7 @@ services:
     hostname: ingress
     ports:
       - 2375:2375 # Docker API
+      - 7776:7776 # Sidecar gRPC
       - 7777:7777 # Sidecar UI
       - 7778:7778 # Envoy UI
       - 9901:9901 # Envoy Admin UI

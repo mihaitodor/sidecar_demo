@@ -30,18 +30,19 @@ run_docker_compose() {
     node_type="backend"
     [ "${container}" = "ingress" ] && node_type="ingress"
 
-    # Funny enough `docker-compose pull` can pull images in parallel, while
-    # `docker-compose up` can't. It's faster to call them one after the other
-    SIDECAR_SEEDS="${seeds}" HOSTNAME="${container}" ENVOY_CONFIG="${node_type}.yaml" DOCKER_HOST="tcp://localhost:${port}" ADVERTISE_IP="${container_ip}" docker-compose -f "docker-compose.${task}.yaml" -p "${task}" pull
-    SIDECAR_SEEDS="${seeds}" HOSTNAME="${container}" ENVOY_CONFIG="${node_type}.yaml" DOCKER_HOST="tcp://localhost:${port}" ADVERTISE_IP="${container_ip}" docker-compose -f "docker-compose.${task}.yaml" -p "${task}" up -d
+    # Funny enough `docker compose pull` can pull images in parallel, while
+    # `docker compose up` can't. It's faster to call them one after the other
+    SIDECAR_SEEDS="${seeds}" HOSTNAME="${container}" ENVOY_CONFIG="${node_type}.yaml" DOCKER_HOST="tcp://localhost:${port}" ADVERTISE_IP="${container_ip}" docker compose -f "docker-compose.${task}.yaml" -p "${task}" pull
+    SIDECAR_SEEDS="${seeds}" HOSTNAME="${container}" ENVOY_CONFIG="${node_type}.yaml" DOCKER_HOST="tcp://localhost:${port}" ADVERTISE_IP="${container_ip}" docker compose -f "docker-compose.${task}.yaml" -p "${task}" up -d
 }
 # Need to export this to use it via xargs...
 export -f run_docker_compose
 
-dind_ingress_containers_colon_ports=$(docker-compose -f docker-compose.dind.yaml ps | grep ingress | sed -n 's/\(^[[:alnum:]]*\).*:\(.*\)->2375\/tcp.*/\1:\2/p')
-dind_backend_containers_colon_ports=$(docker-compose -f docker-compose.dind.yaml ps | grep backend | sed -n 's/\(^[[:alnum:]]*\).*:\(.*\)->2375\/tcp.*/\1:\2/p')
-dind_sidecar_ports=$(docker-compose -f docker-compose.dind.yaml ps | sed -n 's/.*:\(.*\)->7777\/tcp.*/\1/p')
-dind_backend_sidecar_ports=$(docker-compose -f docker-compose.dind.yaml ps | grep backend | sed -n 's/.*:\(.*\)->7777\/tcp.*/\1/p')
+# TODO: Consider using `docker port` instead of sed for these
+dind_ingress_containers_colon_ports=$(docker compose -f docker-compose.dind.yaml ps | grep ingress | sed -n 's/\(^[[:alnum:]]*\).*:\(.*\)->2375\/tcp.*/\1:\2/p')
+dind_backend_containers_colon_ports=$(docker compose -f docker-compose.dind.yaml ps | grep backend | sed -n 's/\(^[[:alnum:]]*\).*:\(.*\)->2375\/tcp.*/\1:\2/p')
+dind_sidecar_ports=$(docker compose -f docker-compose.dind.yaml ps --services | xargs -I {} docker port {} | grep 7777 | cut -d':' -f 2 -)
+dind_backend_sidecar_ports=$(docker compose -f docker-compose.dind.yaml ps --services | grep backend | xargs -I {} docker port {} | grep 7777 | cut -d':' -f 2 -)
 
 [ -n "${dind_ingress_containers_colon_ports}" ] && [ -n "${dind_backend_containers_colon_ports}" ] && [ -n "${dind_backend_sidecar_ports}" ] || die "Please start cluster first"
 
@@ -91,4 +92,4 @@ echo "Starting services on the backend nodes"
 echo "${dind_backend_containers_colon_ports}" | xargs -P4 -I {} sh -c 'run_docker_compose "$@"' "sh" "services" "{}" "${backend_hosts}"
 
 echo "Infrastructure services for the nodes up and running:"
-docker-compose -f docker-compose.dind.yaml ps | sed -n 's/\(^[[:alnum:]]*\).*:\(.*\)->7777\/tcp.*:\(.*\)->7778\/tcp.*:\(.*\)->9901\/tcp.*/\1 | Sidecar: http:\/\/localhost:\2 | Envoy UI: http:\/\/localhost:\3 | Envoy Admin: http:\/\/localhost:\4/p'
+docker compose -f docker-compose.dind.yaml ps --services | xargs -I {} docker inspect --format='{{.Config.Hostname}}: {{range $p, $conf := .NetworkSettings.Ports}}{{if $conf}}{{if eq $p "7777/tcp"}}Sidecar: http://localhost:{{(index $conf 0).HostPort}} | {{end}}{{if eq $p "7778/tcp"}}Envoy UI: http://localhost:{{(index $conf 0).HostPort}} | {{end}}{{if eq $p "9901/tcp"}}Envoy Admin: http://localhost:{{(index $conf 0).HostPort}}{{end}}{{end}}{{end}}' {}

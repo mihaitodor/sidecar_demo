@@ -4,7 +4,7 @@ set -e
 
 cleanup () {
     echo "Tearing down services"
-    docker-compose -f docker-compose.dind.yaml down
+    docker compose -f docker-compose.dind.yaml down
 }
 trap cleanup EXIT
 
@@ -21,11 +21,11 @@ is_docker_healthy() {
 
 echo "Starting DinD containers"
 
-docker-compose -f docker-compose.dind.yaml up -d
+docker compose -f docker-compose.dind.yaml up -d
 
 echo "Waiting for DinD containers to start..."
 
-dind_docker_ports=$(docker-compose -f docker-compose.dind.yaml ps | sed -n 's/.*0.0.0.0:\(.*\)->2375\/tcp.*/\1/p')
+dind_docker_ports=$(docker compose -f docker-compose.dind.yaml ps | sed -n 's/.*0.0.0.0:\([0-9]*\)->2375\/tcp,.*/\1/p')
 while true; do
     healthy="true"
 
@@ -44,7 +44,7 @@ while true; do
 done
 
 echo "DinD containers up and running:"
-docker-compose -f docker-compose.dind.yaml ps
+docker compose -f docker-compose.dind.yaml ps
 
 echo "Press Ctrl+C to exit"
 read -r -d '' _ </dev/tty
